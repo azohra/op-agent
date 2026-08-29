@@ -1,0 +1,47 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/goreleaser/goreleaser/v2.18.0/www/docs/static/schema.json
+version: 2
+
+project_name: op-agent
+
+builds:
+  - id: op-agent
+    main: ./cmd/op-agent
+    binary: op-agent
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/azohra/op-agent/internal/agent.Version={{ .Version }}
+
+archives:
+  - ids:
+      - op-agent
+    formats:
+      - tar.gz
+    name_template: op-agent_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  github:
+    owner: azohra
+    name: op-agent
+  name_template: op-agent {{ .Tag }}
