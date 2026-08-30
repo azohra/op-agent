@@ -3,3 +3,7 @@
 /coverage.out
 *.test
 .DS_Store
+
+# mise
+/mise.local.toml
+/mise.local.lock
