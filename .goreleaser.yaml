@@ -41,6 +41,8 @@ changelog:
       - "^test:"
 
 release:
+  use_existing_draft: true
+  replace_existing_artifacts: true
   github:
     owner: azohra
     name: op-agent

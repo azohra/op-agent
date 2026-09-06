@@ -185,3 +185,13 @@ The defaults can be changed with `OP_AGENT_CACHE_TTL` and
 
 See [Architecture](docs/architecture.md) for the security and data-flow
 contract.
+
+## Publishing a release
+
+Create the release tag on a tested main commit, then run the Release workflow
+on main with that tag. Pushing a tag alone does not publish. The workflow resolves
+the remote tag and rejects commits outside main before obtaining Bosun's release
+token. GoReleaser owns packaging, draft uploads, and publication.
+
+Re-run a failed workflow with the same tag to retry its exact source. Never move
+a published tag or overwrite a published release to repair a failure.

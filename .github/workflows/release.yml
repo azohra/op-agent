@@ -1,22 +1,53 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag on main
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
+  source:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
+        env:
+          MISE_GITHUB_TOKEN: ${{ github.token }}
+      - id: source
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          sha=$(mise run --quiet release:source -- "$RELEASE_TAG")
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
   release:
     name: Release
+    needs: source
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: bosun-release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          ref: ${{ needs.source.outputs.sha }}
           fetch-depth: 0
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         env:
@@ -47,4 +78,4 @@ jobs:
       - name: Publish release
         env:
           GITHUB_TOKEN: ${{ steps.bosun.outputs.token }}
-        run: mise run release "$GITHUB_REF_NAME"
+        run: mise run release "$RELEASE_TAG"

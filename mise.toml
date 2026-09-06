@@ -19,6 +19,8 @@ description = "Prove formatting, behavior, dependencies, and repository safety"
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
+bash scripts/release-source_test.sh
+bash scripts/release-draft_test.sh
 test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
 go vet ./...
 go test -race ./...
@@ -55,7 +57,20 @@ case "$origin" in
   *) refuse "origin is not azohra/op-agent" ;;
 esac
 [ "$(git describe --tags --exact-match 2>/dev/null || true)" = "$tag" ] || refuse "$tag is not the tag at HEAD"
+[ "$(bash scripts/release-source.sh "$tag")" = "$(git rev-parse HEAD)" ] || refuse "release source is not HEAD"
 [ -n "${GITHUB_TOKEN:-}" ] || refuse "GITHUB_TOKEN is unset"
 
+lookup_error=$(mktemp)
+trap 'rm -f "$lookup_error"' EXIT
+if draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2>"$lookup_error"); then
+  [ "$draft" = true ] || refuse "release $tag is already published"
+else
+  grep -Eiq 'not found|HTTP 404|status 404' "$lookup_error" || refuse "could not inspect release $tag"
+fi
 goreleaser release --clean
 """
+
+[tasks."release:source"]
+description = "Resolve a release tag to its reviewed main commit"
+usage = 'arg "<tag>"'
+run = 'bash scripts/release-source.sh "$usage_tag"'
