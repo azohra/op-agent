@@ -2,11 +2,6 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      dry-run:
-        description: Build and verify without publishing
-        type: boolean
-        default: false
 
 permissions:
   contents: write
@@ -41,13 +36,9 @@ jobs:
           key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-${{ hashFiles('go.sum') }}
           restore-keys: |
             go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-
+      - run: mise run check
+      - run: mise run build:release
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-          DRY_RUN: ${{ inputs.dry-run }}
-        run: |
-          if [ "$DRY_RUN" = true ]; then
-            mise run release --dry-run
-          else
-            mise run release
-          fi
+        run: mise run release

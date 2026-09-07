@@ -195,11 +195,20 @@ Conventional changes increment the patch. Non-Conventional commits are excluded
 from the changelog and version calculation. Publication is explicit; merging a
 PR does not publish a release.
 
-From current main, run `mise run release --dry-run` to check the code and build
-four platform archives, checksums and release notes in `dist/`. Run
-`mise run release` to publish, or dispatch the Release workflow on main. Both
-paths calculate the version with git-cliff and create the GitHub release and tag
-at the source commit. There is no version file to update before publication.
+From a clean checkout of current main:
+
+```sh
+mise run check
+mise run build:release
+mise run release
+```
+
+`build:release` calculates the version once and writes the four platform archives,
+checksums, release notes and source commit to `dist/`. Inspect those outputs before
+publishing. `release` checks that the artifacts came from the current clean main
+commit, verifies their checksums, and uploads them without rebuilding. There is no
+source version file to update before publication. The manual Release workflow
+runs the same three commands.
 
 The binary installs the mise plugin from its release tag. Setup and doctor compare
 the installed plugin's Git revision with that tag; the Lua metadata version is
