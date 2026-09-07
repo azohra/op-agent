@@ -22,8 +22,8 @@ check_bump() {
 check_bump 'fix: repair lookup' v0.1.3
 check_bump 'perf: reduce lookup work' v0.1.3
 check_bump 'feat: add lookup mode' v0.2.0
-check_bump 'docs: explain lookup' v0.1.2
-check_bump 'build: simplify packaging' v0.1.2
+check_bump 'docs: explain lookup' v0.1.3
+check_bump 'build: simplify packaging' v0.1.3
 check_bump $'feat!: change lookup\n\nBREAKING CHANGE: Use the new lookup flag.' v1.0.0
 check_bump $'build!: change installation\n\nBREAKING CHANGE: Reinstall the plugin.' v1.0.0
 notes=$(git cliff --config "$config" --offline --unreleased)

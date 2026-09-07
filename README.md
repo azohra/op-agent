@@ -189,11 +189,11 @@ contract.
 ## Publishing a release
 
 Run `mise run changelog` to see released and unreleased changes. Conventional
-squash commits determine the next version: `fix` and `perf` increment the patch,
-`feat` increments the minor, and breaking changes increment the major, including
-before 1.0. Conventional maintenance changes appear in the notes without triggering
-a release. Non-Conventional commits are excluded from the changelog and version
-calculation.
+squash commits determine the next version using git-cliff's default bump rules:
+breaking changes increment the major, features increment the minor, and other
+Conventional changes increment the patch. Non-Conventional commits are excluded
+from the changelog and version calculation. Publication is explicit; merging a
+PR does not publish a release.
 
 From current main, run `mise run release --dry-run` to check the code and build
 four platform archives, checksums and release notes in `dist/`. Run
