@@ -188,10 +188,23 @@ contract.
 
 ## Publishing a release
 
-Create the release tag on a tested main commit, then run the Release workflow
-on main with that tag. Pushing a tag alone does not publish. The workflow resolves
-the remote tag and rejects commits outside main before obtaining Bosun's release
-token. GoReleaser owns packaging, draft uploads, and publication.
+Run `mise run changelog` to see released and unreleased changes. Conventional
+squash commits determine the next version: `fix` and `perf` increment the patch,
+`feat` increments the minor, and breaking changes increment the major, including
+before 1.0. Conventional maintenance changes appear in the notes without triggering
+a release. Non-Conventional commits are excluded from the changelog and version
+calculation.
 
-Re-run a failed workflow with the same tag to retry its exact source. Never move
-a published tag or overwrite a published release to repair a failure.
+From current main, run `mise run release --dry-run` to check the code and build
+four platform archives, checksums and release notes in `dist/`. Run
+`mise run release` to publish, or dispatch the Release workflow on main. Both
+paths calculate the version with git-cliff and create the GitHub release and tag
+at the source commit. There is no version file to update before publication.
+
+The binary installs the mise plugin from its release tag. Setup and doctor compare
+the installed plugin's Git revision with that tag; the Lua metadata version is
+not the release version.
+
+PR checks run the same checks and packaging task without publishing. Release
+notes contain change summaries and links to the complete squash commits, with
+breaking-change instructions included. Published notes live in GitHub Releases.

@@ -1,6 +1,6 @@
 [tools]
 go = "1.27.1"
-goreleaser = "2.18.0"
+"aqua:orhun/git-cliff" = "2.14.1"
 # 8.30.1 can silently miss default rules; keep the last working release.
 # https://github.com/gitleaks/gitleaks/issues/2170
 gitleaks = "8.30.0"
@@ -19,13 +19,11 @@ description = "Prove formatting, behavior, dependencies, and repository safety"
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
-bash scripts/release-source_test.sh
-bash scripts/release-draft_test.sh
 test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+bash scripts/release_test.sh
 go vet ./...
 go test -race ./...
 govulncheck ./...
-goreleaser check
 gitleaks dir --no-banner --redact .
 """
 
@@ -33,44 +31,67 @@ gitleaks dir --no-banner --redact .
 description = "Build op-agent for the current platform"
 run = "go build -trimpath -o op-agent ./cmd/op-agent"
 
-[tasks."build:release"]
-description = "Build release archives and checksums without publishing"
-depends = ["check"]
-run = "goreleaser release --snapshot --clean"
+[tasks.changelog]
+description = "Render released and unreleased changes"
+run = "git cliff --offline"
 
-[tasks.release]
-description = "Build and publish the release tag at HEAD"
-depends = ["check"]
-usage = 'arg "<tag>" help="The release tag, e.g. v1.2.3"'
-run = """
+[tasks."build:release"]
+description = "Build four platform archives, checksums, and release notes"
+run = '''
 #!/usr/bin/env bash
 set -euo pipefail
-
-tag="${usage_tag:?release: a release tag is required}"
-refuse() { echo "release: refusing — $*" >&2; exit 1; }
-
-[[ "$tag" =~ ^v[0-9]+[.][0-9]+[.][0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || refuse "$tag is not a release tag"
-[ -z "$(git status --porcelain)" ] || refuse "the tree is dirty"
-origin="$(git remote get-url origin)"
-case "$origin" in
-  git@github.com:azohra/op-agent.git|https://github.com/azohra/op-agent|https://github.com/azohra/op-agent.git) ;;
-  *) refuse "origin is not azohra/op-agent" ;;
-esac
-[ "$(git describe --tags --exact-match 2>/dev/null || true)" = "$tag" ] || refuse "$tag is not the tag at HEAD"
-[ "$(bash scripts/release-source.sh "$tag")" = "$(git rev-parse HEAD)" ] || refuse "release source is not HEAD"
-[ -n "${GITHUB_TOKEN:-}" ] || refuse "GITHUB_TOKEN is unset"
-
-lookup_error=$(mktemp)
-trap 'rm -f "$lookup_error"' EXIT
-if draft=$(gh release view "$tag" --json isDraft --jq .isDraft 2>"$lookup_error"); then
-  [ "$draft" = true ] || refuse "release $tag is already published"
+if tag=$(git describe --tags --exact-match --match 'v[0-9]*' 2>/dev/null); then
+  notes=(--current)
 else
-  grep -Eiq 'not found|HTTP 404|status 404' "$lookup_error" || refuse "could not inspect release $tag"
+  tag=$(git cliff --offline --unreleased --bumped-version)
+  notes=(--unreleased --tag "$tag")
 fi
-goreleaser release --clean
-"""
+[[ "$tag" =~ ^v[0-9]+[.][0-9]+[.][0-9]+$ ]]
+version=${tag#v}
+rm -rf dist
+mkdir -p dist
+for os in darwin linux; do
+  for arch in amd64 arm64; do
+    dir="dist/op-agent_${version}_${os}_${arch}"
+    mkdir -p "$dir"
+    CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath \
+      -ldflags="-s -w -X github.com/azohra/op-agent/internal/agent.Version=$version" \
+      -o "$dir/op-agent" ./cmd/op-agent
+    cp README.md LICENSE "$dir/"
+    tar -czf "$dir.tar.gz" -C "$dir" op-agent README.md LICENSE
+  done
+done
+[ "$("dist/op-agent_${version}_$(go env GOOS)_$(go env GOARCH)/op-agent" --version)" = "$version" ]
+(cd dist && shasum -a 256 op-agent_*.tar.gz > checksums.txt)
+git cliff --offline "${notes[@]}" > dist/notes.md
+printf '%s\n' "$tag" > dist/tag
+'''
 
-[tasks."release:source"]
-description = "Resolve a release tag to its reviewed main commit"
-usage = 'arg "<tag>"'
-run = 'bash scripts/release-source.sh "$usage_tag"'
+[tasks.release]
+description = "Calculate, build, and publish a release from main"
+tools = { gh = "2.100.0" }
+usage = 'flag "--dry-run" help="Build and verify without publishing"'
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+[ -z "$(git status --porcelain)" ] || { echo 'release: commit changes first' >&2; exit 1; }
+git fetch -q origin main --tags
+head=$(git rev-parse HEAD)
+[ "$head" = "$(git rev-parse origin/main)" ] || { echo 'release: check out current main first' >&2; exit 1; }
+base=$(git describe --tags --abbrev=0 --match 'v[0-9]*')
+tag=$(git cliff --offline --unreleased --bumped-version)
+if [ "$tag" = "$base" ]; then
+  echo 'No releasable changes'
+  exit 0
+fi
+mise run check
+mise run build:release
+[ "$(cat dist/tag)" = "$tag" ]
+if [ "${usage_dry_run:-false}" = true ]; then
+  printf 'Ready to publish %s at %s\n' "$tag" "$head"
+  exit 0
+fi
+gh release create "$tag" dist/op-agent_*.tar.gz dist/checksums.txt \
+  --repo azohra/op-agent --target "$head" \
+  --title "op-agent $tag" --notes-file dist/notes.md
+'''
