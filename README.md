@@ -195,25 +195,19 @@ Conventional changes increment the patch. Non-Conventional commits are excluded
 from the changelog and version calculation. Publication is explicit; merging a
 PR does not publish a release.
 
-From a clean checkout of current main:
+From a clean checkout of current main, run `mise run release`, or dispatch the
+manual Release workflow. Release fetches main and its tags, checks the source
+commit, calculates the version once, builds the four archives, and publishes them
+with checksums and release notes. There is no source version file to update or
+separate packaging step to run before publication.
 
-```sh
-mise run check
-mise run build:release
-mise run release
-```
-
-`build:release` calculates the version once and writes the four platform archives,
-checksums, release notes and source commit to `dist/`. Inspect those outputs before
-publishing. `release` checks that the artifacts came from the current clean main
-commit, verifies their checksums, and uploads them without rebuilding. There is no
-source version file to update before publication. The manual Release workflow
-runs the same three commands.
+PR checks run tests and `mise run build:dist`, which packages development binaries
+without calculating a version from branch commits. Release uses that same build
+task with the calculated version. The outputs are written to `dist/`.
 
 The binary installs the mise plugin from its release tag. Setup and doctor compare
 the installed plugin's Git revision with that tag; the Lua metadata version is
 not the release version.
 
-PR checks run the same checks and packaging task without publishing. Release
-notes contain change summaries and links to the complete squash commits, with
+Release notes contain change summaries and links to the complete squash commits, with
 breaking-change instructions included. Published notes live in GitHub Releases.

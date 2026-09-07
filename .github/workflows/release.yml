@@ -36,8 +36,6 @@ jobs:
           key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-${{ hashFiles('go.sum') }}
           restore-keys: |
             go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-
-      - run: mise run check
-      - run: mise run build:release
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
