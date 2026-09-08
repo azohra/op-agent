@@ -5,6 +5,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
   group: release
@@ -38,5 +39,5 @@ jobs:
             go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-
       - name: Publish release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: mise run release
