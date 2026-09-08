@@ -189,9 +189,10 @@ contract.
 ## Publishing a release
 
 Run `mise run changelog` to see released and unreleased changes. Conventional
-squash commits determine the next version using git-cliff's default bump rules:
-breaking changes increment the major, features increment the minor, and other
-Conventional changes increment the patch. Non-Conventional commits are excluded
+squash commits determine the next version using git-cliff. Before v1.0.0,
+breaking changes increment the minor version; from v1.0.0 onward, they increment
+the major. Features increment the minor, and other Conventional changes
+increment the patch. Non-Conventional commits are excluded
 from the changelog and version calculation. Publication is explicit; merging a
 PR does not publish a release.
 
