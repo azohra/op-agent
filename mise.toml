@@ -35,7 +35,7 @@ description = "Render released and unreleased changes"
 run = "git cliff"
 
 [tasks."build:dist"]
-description = "Build four platform archives and checksums"
+description = "Build supported platform archives and checksums"
 run = '''
 #!/usr/bin/env bash
 set -euo pipefail
@@ -44,13 +44,14 @@ rm -rf dist
 mkdir -p dist
 for os in darwin linux; do
   for arch in amd64 arm64; do
+    [ "$os/$arch" != darwin/amd64 ] || continue
     dir="dist/op-agent_${version}_${os}_${arch}"
     mkdir -p "$dir"
     CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -buildvcs=false \
       -ldflags="-s -w -X github.com/azohra/op-agent/internal/agent.Version=$version" \
       -o "$dir/op-agent" ./cmd/op-agent
     cp README.md LICENSE "$dir/"
-    tar -czf "$dir.tar.gz" -C "$dir" op-agent README.md LICENSE
+    COPYFILE_DISABLE=1 tar -czf "$dir.tar.gz" -C "$dir" op-agent README.md LICENSE
   done
 done
 [ "$("dist/op-agent_${version}_$(go env GOOS)_$(go env GOARCH)/op-agent" --version)" = "$version" ]

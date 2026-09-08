@@ -197,7 +197,7 @@ PR does not publish a release.
 
 From a clean checkout of current main, run `mise run release`, or dispatch the
 manual Release workflow. Release fetches main and its tags, checks the source
-commit, calculates the version once, builds the four archives, and publishes them
+commit, calculates the version once, builds the platform archives, and publishes them
 with checksums and release notes. There is no source version file to update or
 separate packaging step to run before publication.
 
@@ -219,3 +219,6 @@ Published notes live in GitHub Releases.
 Changelog rendering uses GitHub PR metadata for links, with commit links when no
 associated PR is available. Set `GITHUB_TOKEN` for authenticated GitHub access;
 version calculation remains offline.
+
+Release binaries support Apple Silicon macOS and AMD64/ARM64 Linux. Intel Macs
+are no longer supported.
