@@ -32,7 +32,7 @@ run = "go build -trimpath -o op-agent ./cmd/op-agent"
 
 [tasks.changelog]
 description = "Render released and unreleased changes"
-run = "git cliff --offline"
+run = "git cliff"
 
 [tasks."build:dist"]
 description = "Build four platform archives and checksums"
@@ -71,7 +71,7 @@ tag=$(git cliff --offline --unreleased --bumped-version)
 [[ "$tag" =~ ^v[0-9]+[.][0-9]+[.][0-9]+$ ]]
 [ "$tag" != "$(git describe --tags --abbrev=0 --match 'v[0-9]*')" ] || { echo 'No new Conventional changes to release'; exit 0; }
 RELEASE_VERSION="${tag#v}" mise run build:dist
-git cliff --offline --unreleased --tag "$tag" > dist/notes.md
+git cliff --unreleased --tag "$tag" > dist/notes.md
 gh release create "$tag" dist/op-agent_*.tar.gz dist/checksums.txt \
   --repo azohra/op-agent --target "$head" \
   --title "op-agent $tag" --notes-file dist/notes.md

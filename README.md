@@ -209,5 +209,9 @@ The binary installs the mise plugin from its release tag. Setup and doctor compa
 the installed plugin's Git revision with that tag; the Lua metadata version is
 not the release version.
 
-Release notes contain change summaries and links to the complete squash commits, with
-breaking-change instructions included. Published notes live in GitHub Releases.
+Release notes contain change summaries, PR links and breaking-change instructions.
+Published notes live in GitHub Releases.
+
+Changelog rendering uses GitHub PR metadata for links, with commit links when no
+associated PR is available. Set `GITHUB_TOKEN` for authenticated GitHub access;
+version calculation remains offline.
