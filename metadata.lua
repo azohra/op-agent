@@ -1,5 +1,6 @@
 PLUGIN = {}
 PLUGIN.name = "op-agent"
+-- Plugin metadata version; release matching uses the installed Git tag.
 PLUGIN.version = "0.1.2"
 PLUGIN.description = "Resolve 1Password references for mise tasks"
 PLUGIN.homepage = "https://github.com/azohra/op-agent"

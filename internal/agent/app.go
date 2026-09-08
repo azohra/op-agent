@@ -476,15 +476,15 @@ func misePluginVersionCurrent(expectedVersion string) error {
 			dataDir = filepath.Join(home, ".local", "share", "mise")
 		}
 	}
-	metadata, err := os.ReadFile(filepath.Join(dataDir, "plugins", "op-agent", "metadata.lua"))
+	plugin := filepath.Join(dataDir, "plugins", "op-agent")
+	head, err := exec.Command("git", "-C", plugin, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return errors.New("run op-agent setup")
 	}
-	want := `PLUGIN.version = "` + strings.TrimPrefix(expectedVersion, "v") + `"`
-	for _, line := range strings.Split(string(metadata), "\n") {
-		if strings.TrimSpace(line) == want {
-			return nil
-		}
+	tag := "refs/tags/v" + strings.TrimPrefix(expectedVersion, "v") + "^{commit}"
+	release, err := exec.Command("git", "-C", plugin, "rev-parse", "--verify", tag).Output()
+	if err == nil && bytes.Equal(head, release) {
+		return nil
 	}
 	return errors.New("plugin version differs; run op-agent setup")
 }

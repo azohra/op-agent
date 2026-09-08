@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -107,9 +108,7 @@ func TestMisePluginMatchesRepositoryAndVersion(t *testing.T) {
 	if err := os.MkdirAll(plugin, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(plugin, "metadata.lua"), []byte("PLUGIN.version = \"0.1.2\"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	createPluginRelease(t, plugin)
 	mise := filepath.Join(temp, "mise")
 	script := "#!/bin/sh\nprintf '%s\\n' 'op-agent  https://example.com/op-agent.git  HEAD abc1234'\n"
 	if err := os.WriteFile(mise, []byte(script), 0o700); err != nil {
@@ -131,14 +130,31 @@ func TestMisePluginVersionCurrent(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("MISE_DATA_DIR", data)
-	metadata := filepath.Join(plugin, "metadata.lua")
-	if err := os.WriteFile(metadata, []byte("PLUGIN.version = \"0.1.2\"\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
+	createPluginRelease(t, plugin)
 	if err := misePluginVersionCurrent("0.1.2"); err != nil {
 		t.Fatal(err)
 	}
 	if err := misePluginVersionCurrent("0.1.3"); err == nil {
 		t.Fatal("stale plugin version was accepted")
+	}
+	command := exec.Command("git", "-C", plugin, "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "Later revision")
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("git: %s: %v", output, err)
+	}
+	if err := misePluginVersionCurrent("0.1.2"); err == nil {
+		t.Fatal("plugin revision after the release tag was accepted")
+	}
+}
+
+func createPluginRelease(t *testing.T, plugin string) {
+	t.Helper()
+	for _, args := range [][]string{
+		{"init", "-q", plugin},
+		{"-C", plugin, "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "commit", "--allow-empty", "-qm", "Initial"},
+		{"-C", plugin, "-c", "tag.gpgsign=false", "tag", "v0.1.2"},
+	} {
+		if output, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git: %s: %v", output, err)
+		}
 	}
 }
