@@ -201,6 +201,10 @@ commit, calculates the version once, builds the four archives, and publishes the
 with checksums and release notes. There is no source version file to update or
 separate packaging step to run before publication.
 
+Main requires passing PR checks against the current base before merging. The
+Check workflow runs on pull requests or manual dispatch, without repeating after
+merge.
+
 PR checks run tests and `mise run build:dist`, which packages development binaries
 without calculating a version from branch commits. Release uses that same build
 task with the calculated version. The outputs are written to `dist/`.
