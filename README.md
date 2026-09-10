@@ -188,6 +188,10 @@ contract.
 
 ## Publishing a release
 
+See [Conventional PR](https://github.com/azohra/conventional-pr) for the change-record
+format and shared presentation. `mise run changelog -- --json` exports structured
+history; `mise.toml` pins the preset URL.
+
 Run `mise run changelog` to see released and unreleased changes. Conventional
 squash commits determine the next version using git-cliff. Before v1.0.0,
 breaking changes increment the minor version; from v1.0.0 onward, they increment
@@ -219,7 +223,7 @@ Published notes live in GitHub Releases.
 
 Changelog rendering uses GitHub PR metadata for links, with commit links when no
 associated PR is available. Set `GITHUB_TOKEN` for authenticated GitHub access;
-version calculation remains offline.
+the shared preset is fetched for every invocation, including version calculation.
 
 Release binaries support Apple Silicon macOS and AMD64/ARM64 Linux. Intel Macs
 are no longer supported.
