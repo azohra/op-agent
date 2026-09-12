@@ -1,5 +1,5 @@
 [vars]
-changelog_config = "https://raw.githubusercontent.com/azohra/conventional-pr/main/cliff.toml"
+changelog_config = "https://gist.githubusercontent.com/azohra/2bf7f60736469fa8a81ffcb67214e572/raw/cliff.toml"
 
 [tools]
 go = "1.27.1"
