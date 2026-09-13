@@ -16,7 +16,7 @@ command_inputs = ["uname -sm"]
 go = ["**/*.go", "go.mod", "go.sum"]
 
 [vars]
-changelog_config = "https://gist.githubusercontent.com/azohra/2bf7f60736469fa8a81ffcb67214e572/raw/cliff.toml"
+changelog_config = "https://raw.githubusercontent.com/azohra/.github/main/cliff.toml"
 
 [tools]
 go = "1.27.1"
