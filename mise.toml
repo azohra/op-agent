@@ -1,9 +1,27 @@
+[settings]
+# The task artifact cache: a task whose inputs are unchanged replays its
+# result instead of running again, on a laptop and on a runner alike.
+experimental = true
+
+# Every Go file plus the module files is the program. A file outside that
+# partition invalidates nothing.
+[task_config]
+global_inputs = ["mise.toml"]
+
+[task_config.cache]
+enabled = true
+command_inputs = ["uname -sm"]
+
+[task_config.input_groups]
+go = ["**/*.go", "go.mod", "go.sum"]
+
 [vars]
 changelog_config = "https://gist.githubusercontent.com/azohra/2bf7f60736469fa8a81ffcb67214e572/raw/cliff.toml"
 
 [tools]
 go = "1.27.1"
 "aqua:orhun/git-cliff" = "2.14.1"
+goreleaser = "2.18.1"
 # 8.30.1 can silently miss default rules; keep the last working release.
 # https://github.com/gitleaks/gitleaks/issues/2170
 gitleaks = "8.30.0"
@@ -17,20 +35,36 @@ run = "gofmt -w ."
 description = "Run the test suite with the race detector"
 run = "go test -race ./..."
 
-[tasks.check]
-description = "Prove formatting, behavior, dependencies, and repository safety"
+[tasks."check:go"]
+description = "Formatting, vet and the race-detected test suite"
+sources = ["@group:go"]
+outputs = []
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
 test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
 go vet ./...
 go test -race ./...
-govulncheck ./...
-gitleaks dir --no-banner --redact .
 """
+
+# Reads the vulnerability database of the day; never cached.
+[tasks."check:deps"]
+description = "Known vulnerabilities"
+run = "govulncheck ./..."
+
+# Reads the working tree for secrets; never cached.
+[tasks."check:secrets"]
+description = "No secret in the tree"
+run = "gitleaks dir --no-banner --redact ."
+
+[tasks.check]
+description = "The definition of green"
+depends = ["check:go", "check:deps", "check:secrets"]
 
 [tasks.build]
 description = "Build op-agent for the current platform"
+sources = ["@group:go"]
+outputs = ["op-agent"]
 run = "go build -trimpath -o op-agent ./cmd/op-agent"
 
 [tasks.changelog]
@@ -45,46 +79,26 @@ fi
 git cliff --config-url "{{vars.changelog_config}}"
 '''
 
-[tasks."build:dist"]
-description = "Build supported platform archives and checksums"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-version=${RELEASE_VERSION:-dev}
-rm -rf dist
-mkdir -p dist
-for os in darwin linux; do
-  for arch in amd64 arm64; do
-    [ "$os/$arch" != darwin/amd64 ] || continue
-    dir="dist/op-agent_${version}_${os}_${arch}"
-    mkdir -p "$dir"
-    CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" go build -trimpath -buildvcs=false \
-      -ldflags="-s -w -X github.com/azohra/op-agent/internal/agent.Version=$version" \
-      -o "$dir/op-agent" ./cmd/op-agent
-    cp README.md LICENSE "$dir/"
-    COPYFILE_DISABLE=1 tar -czf "$dir.tar.gz" -C "$dir" op-agent README.md LICENSE
-  done
-done
-[ "$("dist/op-agent_${version}_$(go env GOOS)_$(go env GOARCH)/op-agent" --version)" = "$version" ]
-(cd dist && shasum -a 256 op-agent_*.tar.gz > checksums.txt)
-'''
+[tasks.dist]
+description = "Build every release archive, the checksums and the cask into dist/ without publishing"
+sources = ["@group:go", ".goreleaser.yaml", "LICENSE", "README.md"]
+outputs = []
+env = { HOMEBREW_TOOLS_TOKEN = "snapshot" }
+run = "goreleaser release --snapshot --clean"
 
 [tasks.release]
-description = "Build and publish a release from current main"
-tools = { gh = "2.100.0" }
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-[ -z "$(git status --porcelain)" ] || { echo 'release: commit changes first' >&2; exit 1; }
-git fetch -q origin main --tags
-head=$(git rev-parse HEAD)
-[ "$head" = "$(git rev-parse origin/main)" ] || { echo 'release: check out current main first' >&2; exit 1; }
-tag=$(git cliff --config-url "{{vars.changelog_config}}" --offline --unreleased --bumped-version)
-[[ "$tag" =~ ^v[0-9]+[.][0-9]+[.][0-9]+$ ]]
-[ "$tag" != "$(git describe --tags --abbrev=0 --match 'v[0-9]*')" ] || { echo 'No new Conventional changes to release'; exit 0; }
-RELEASE_VERSION="${tag#v}" mise run build:dist
-git cliff --config-url "{{vars.changelog_config}}" --unreleased --tag "$tag" > dist/notes.md
-gh release create "$tag" dist/op-agent_*.tar.gz dist/checksums.txt \
-  --repo azohra/op-agent --target "$head" \
-  --title "op-agent $tag" --notes-file dist/notes.md
-'''
+description = "Publish the release for the checked-out tag"
+run = "goreleaser release --clean"
+
+# What this repository needs in its environment, and which of those
+# disclosure would compromise. Read it; do not restate it.
+[tasks."env:contract"]
+hide = true
+description = "Every variable this repository needs, and whether it is a secret"
+run = """
+cat <<'CONTRACT'
+secret  BOSUN_PRIVATE_KEY
+secret  GITHUB_TOKEN
+value   BOSUN_CLIENT_ID
+CONTRACT
+"""

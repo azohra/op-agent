@@ -188,42 +188,20 @@ contract.
 
 ## Publishing a release
 
-See [Conventional PR](https://github.com/azohra/conventional-pr) for the change-record
-format and shared presentation. `mise run changelog -- --json` exports structured
-history; `mise.toml` follows the shared preset on main.
+release-drafter keeps one draft release on GitHub. Every merge to main adds the
+pull request's title under Added or Fixed, from labels the Conventional title
+sets on its own, and resolves the next version: a breaking title is a major,
+`feat` a minor, `fix` a patch. `build`, `chore`, `ci`, `docs`, `style` and
+`test` titles stay out of the draft. The draft is the answer to "what is
+unreleased", and editing it is where release notes get written.
 
-Run `mise run changelog` to see released and unreleased changes. Conventional
-squash commits determine the next version using git-cliff. Before v1.0.0,
-breaking changes increment the minor version; from v1.0.0 onward, they increment
-the major. Features increment the minor, and other Conventional changes
-increment the patch. Non-Conventional commits are excluded
-from the changelog and version calculation. Publication is explicit; merging a
-PR does not publish a release.
+Publishing the draft creates the tag. That runs the Release workflow, which is
+`mise run release`: goreleaser builds the archives for macOS and Linux with the
+version from the tag, keeping the asset names mise installs from, writes
+`checksums.txt`, attaches them to the release, and opens a pull request in
+homebrew-tools with the generated cask using a token minted from the Bosun
+app. If the build fails the release returns to draft, so the previous one stays
+latest. Intel Macs are not supported.
 
-From a clean checkout of current main, run `mise run release`, or dispatch the
-manual Release workflow. Release fetches main and its tags, checks the source
-commit, calculates the version once, builds the platform archives, and publishes them
-with checksums and release notes. There is no source version file to update or
-separate packaging step to run before publication.
-
-Main requires passing PR checks against the current base before merging. The
-Check workflow runs on pull requests or manual dispatch, without repeating after
-merge.
-
-PR checks run tests and `mise run build:dist`, which packages development binaries
-without calculating a version from branch commits. Release uses that same build
-task with the calculated version. The outputs are written to `dist/`.
-
-The binary installs the mise plugin from its release tag. Setup and doctor compare
-the installed plugin's Git revision with that tag; the Lua metadata version is
-not the release version.
-
-Release notes contain change summaries, PR links and breaking-change instructions.
-Published notes live in GitHub Releases.
-
-Changelog rendering uses GitHub PR metadata for links, with commit links when no
-associated PR is available. Set `GITHUB_TOKEN` for authenticated GitHub access;
-the shared preset is fetched for every invocation, including version calculation.
-
-Release binaries support Apple Silicon macOS and AMD64/ARM64 Linux. Intel Macs
-are no longer supported.
+`mise run dist` runs the same build as a snapshot on every pull request.
+`mise run changelog` renders the history from the shared git-cliff config.
