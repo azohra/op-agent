@@ -3,8 +3,8 @@
 # result instead of running again, on a laptop and on a runner alike.
 experimental = true
 
-# Every Go file plus the module files is the program. A file outside that
-# partition invalidates nothing.
+# Shared inputs cover Go source and modules. The Go check also exercises
+# the mise plugin, so it declares the Lua hooks and metadata as inputs.
 [task_config]
 global_inputs = ["mise.toml"]
 
@@ -31,20 +31,21 @@ gitleaks = "8.30.0"
 description = "Format Go source"
 run = "gofmt -w ."
 
+# Go's test cache cannot track the Lua files read by the mise subprocess.
 [tasks.test]
 description = "Run the test suite with the race detector"
-run = "go test -race ./..."
+run = "go test -race -count=1 ./..."
 
 [tasks."check:go"]
 description = "Formatting, vet and the race-detected test suite"
-sources = ["@group:go"]
+sources = ["@group:go", "hooks/**", "metadata.lua"]
 outputs = []
 run = """
 #!/usr/bin/env bash
 set -euo pipefail
 test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
 go vet ./...
-go test -race ./...
+go test -race -count=1 ./...
 """
 
 # Reads the vulnerability database of the day; never cached.
