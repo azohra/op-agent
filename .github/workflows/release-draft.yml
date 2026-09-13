@@ -19,3 +19,5 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    with:
+      pre_v1: true
