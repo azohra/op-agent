@@ -1,0 +1,68 @@
+version: 2
+project_name: op-agent
+
+builds:
+  - main: ./cmd/op-agent
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/azohra/op-agent/internal/agent.Version={{ .Version }}
+    goos: [darwin, linux]
+    goarch: [amd64, arm64]
+    ignore:
+      - goos: darwin
+        goarch: amd64
+
+# mise installs op-agent from these assets by name; the name stays as it was.
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+# goreleaser opens the cask update as a pull request in homebrew-tools, whose
+# own checks gate it. The token is minted per run from the Bosun app.
+homebrew_casks:
+  - name: op-agent
+    repository:
+      owner: azohra
+      name: homebrew-tools
+      token: "{{ .Env.HOMEBREW_TOOLS_TOKEN }}"
+      branch: "op-agent-{{ .Version }}"
+      pull_request:
+        enabled: true
+        base:
+          owner: azohra
+          name: homebrew-tools
+          branch: main
+    directory: Casks
+    commit_author:
+      name: azohra-bosun[bot]
+      email: 325107280+azohra-bosun[bot]@users.noreply.github.com
+    commit_msg_template: "chore(deps): update op-agent to {{ .Tag }}"
+    homepage: https://github.com/azohra/op-agent
+    description: Resolve and cache 1Password secrets for command-line tasks
+    binaries:
+      - op-agent
+    dependencies:
+      - cask: 1password-cli
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/op-agent"]
+          end
+
+# Notes come from the draft release-drafter kept; goreleaser attaches the
+# artifacts to the release the published draft became.
+release:
+  use_existing_draft: true
+  mode: keep-existing
+
+changelog:
+  disable: true

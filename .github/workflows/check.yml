@@ -2,6 +2,8 @@ name: Check
 
 on:
   pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -9,7 +11,7 @@ permissions:
 
 concurrency:
   group: check-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -18,6 +20,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c
         env:
           MISE_GITHUB_TOKEN: ${{ github.token }}
@@ -35,5 +39,21 @@ jobs:
           key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-${{ hashFiles('go.sum') }}
           restore-keys: |
             go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}-
+      # mise's task artifact cache: a task whose inputs match an entry replays
+      # instead of running. Pull requests read what main has proven; only main
+      # writes, so a pull request can never seed an entry main relies on.
+      - id: task-cache
+        run: echo "dir=$(mise cache path)/task-artifacts" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ steps.task-cache.outputs.dir }}
+          key: mise-tasks-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
+          restore-keys: |
+            mise-tasks-${{ runner.os }}-${{ runner.arch }}-
       - run: mise run check
-      - run: mise run build:dist
+      - run: mise run dist
+      - if: github.event_name == 'push'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ${{ steps.task-cache.outputs.dir }}
+          key: mise-tasks-${{ runner.os }}-${{ runner.arch }}-${{ github.sha }}
