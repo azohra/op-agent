@@ -19,7 +19,7 @@ go = ["**/*.go", "go.mod", "go.sum"]
 changelog_config = "https://raw.githubusercontent.com/azohra/.github/main/cliff.toml"
 
 [tools]
-go = "1.27.1"
+go = "1.27.3"
 "aqua:orhun/git-cliff" = "2.14.1"
 goreleaser = "2.18.1"
 # 8.30.1 can silently miss default rules; keep the last working release.
