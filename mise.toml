@@ -58,9 +58,13 @@ run = "govulncheck ./..."
 description = "No secret in the tree"
 run = "gitleaks dir --no-banner --redact ."
 
+[tasks."check:tasks"]
+description = "Every task definition is valid"
+run = "mise tasks validate"
+
 [tasks.check]
 description = "The definition of green"
-depends = ["check:go", "check:deps", "check:secrets"]
+depends = ["check:tasks", "check:go", "check:deps", "check:secrets"]
 
 [tasks.build]
 description = "Build op-agent for the current platform"
